@@ -1,0 +1,71 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("EDITOR") // ADMIN or EDITOR
+  createdAt DateTime @default(now())
+}
+
+model Destination {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  state       String
+  region      String    // North, South, East, West, North East
+  images      String    // Comma-separated or JSON list of image URLs
+  packages    Package[]
+  createdAt   DateTime  @default(now())
+}
+
+model Package {
+  id            String      @id @default(uuid())
+  packageName   String
+  duration      String      // e.g., "7 Days 6 Nights"
+  price         Float
+  images        String      // Comma-separated or JSON list of image URLs
+  description   String
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  name        String
+  month       String   // e.g., "October"
+  state       String
+  category    String   // Cultural, Spiritual, Harvest, Music, Dance
+  image       String
+  description String
+  createdAt   DateTime @default(now())
+}
+
+model Blog {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  state       String
+  category    String
+  image       String
+  readTime    String   // e.g., "5 mins"
+  author      String
+  createdAt   DateTime @default(now())
+}
+
+model Media {
+  id        String   @id @default(uuid())
+  filename  String
+  url       String
+  size      String
+  createdAt DateTime @default(now())
+}

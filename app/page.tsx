@@ -1,121 +1,34 @@
-"use client";
+import React from 'react';
+import { prisma } from '@/lib/prisma';
+import HomeClient from './HomeClient';
 
-import { useState, useEffect } from "react";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/amplify/data/resource";
-import "./../app/app.css";
-import { Amplify } from "aws-amplify";
-import outputs from "@/amplify_outputs.json";
-import "@aws-amplify/ui-react/styles.css";
-import { useAuthenticator } from "@aws-amplify/ui-react";
-Amplify.configure(outputs);
+// Ensure the page renders dynamically on requests
+export const dynamic = 'force-dynamic';
 
-// In-memory mock database to allow local testing without AWS deployment
-let mockTodos = [
-  { id: "1", content: "Hello from local mock data! (No AWS deployment needed)" }
-];
-const listeners = new Set<(data: { items: typeof mockTodos }) => void>();
+export default async function HomePage() {
+  // Query seeded databases
+  const destinations = await prisma.destination.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
 
-const notify = () => {
-  const data = { items: [...mockTodos] };
-  listeners.forEach(listener => listener(data));
-};
+  const packages = await prisma.package.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
 
-const mockClient = {
-  models: {
-    Todo: {
-      observeQuery: () => ({
-        subscribe: (callbacks: { next: (data: { items: typeof mockTodos }) => void }) => {
-          listeners.add(callbacks.next);
-          // Emit initial data asynchronously to match Amplify behavior
-          setTimeout(() => callbacks.next({ items: [...mockTodos] }), 0);
-          return {
-            unsubscribe: () => {
-              listeners.delete(callbacks.next);
-            }
-          };
-        }
-      }),
-      create: async (input: { content: string }) => {
-        const newTodo = {
-          id: Math.random().toString(36).substring(2),
-          content: input.content,
-        };
-        mockTodos.push(newTodo);
-        notify();
-        return newTodo;
-      },
-      delete: async (input: { id: string }) => {
-        mockTodos = mockTodos.filter(t => t.id !== input.id);
-        notify();
-        return {};
-      }
-    }
-  }
-};
+  const events = await prisma.event.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
 
-const client = outputs.data.url.includes("example.com")
-  ? (mockClient as any)
-  : generateClient<Schema>();
-
-export default function App() {
-  const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
-
-  const { signOut: realSignOut } = useAuthenticator();
-  const signOut = outputs.data?.url?.includes("example.com")
-    ? () => { localStorage.removeItem("mock_logged_in"); window.location.reload(); }
-    : realSignOut;
-  useEffect(() => {
-    const subscription = client.models.Todo.observeQuery().subscribe({
-      next: (data) => {
-        setTodos([...data.items]);
-      },
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  async function createTodo() {
-    const content = window.prompt("Todo content");
-
-    if (!content) return;
-
-    await client.models.Todo.create({
-      content,
-    });
-  }
-
-  async function deleteTodo(id: string) {
-    await client.models.Todo.delete({ id });
-  }
+  const blogs = await prisma.blog.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
 
   return (
-    <main>
-      <h1>My Todos</h1>
-
-      <button onClick={createTodo}>+ New Todo</button>
-      <button onClick={signOut}>Sign out</button>
-
-      <ul>
-        {todos.map((todo) => (
-          <li
-            key={todo.id}
-            onClick={() => deleteTodo(todo.id)}
-            style={{ cursor: "pointer" }}
-          >
-            {todo.content}
-          </li>
-        ))}
-      </ul>
-
-      <div>
-        🥳 App successfully hosted. Try creating a new todo.
-        <br />
-
-        <a href="https://docs.amplify.aws/nextjs/start/quickstart/nextjs-app-router-client-components/">
-          Review next steps of this tutorial
-        </a>
-      </div>
-    </main>
+    <HomeClient 
+      destinations={destinations}
+      packages={packages}
+      events={events}
+      blogs={blogs}
+    />
   );
 }
